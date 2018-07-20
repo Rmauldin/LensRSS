@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">News Viewer</string>
+    <string name="add_feed_title">Select RSS Feeds</string>
+    <string name="open">open</string>
+    <string name="close">close</string>
+    <string name="link_icon">Link Icon</string>
+    <string name="info_icon">info icon</string>
+    <string name="end_of_feed">End of Feed</string>
+    <string name="no_feeds">No Articles</string>
+    <string name="add_custom_feed">Add Custom Feed</string>
+    <string name="edit_drawer_item_title">Edit RSS Feed</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Remove</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="invalid_url">Invalid URL Input</string>
+    <string name="edit_title_hint">Feed Title</string>
+    <string name="edit_url_hint">http://feeds.bbci.co.uk/news/world/rss.xml</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="no_article_text">Could not fetch full article.</string>
+</resources>
