@@ -297,6 +297,10 @@ public class RssFeedModel implements Parcelable{
         return htmlDetails;
     }
 
+    public String getThumbnailUrl() {
+        return thumbnail_url;
+    }
+
     private class getMonthException extends Throwable {
     }
 

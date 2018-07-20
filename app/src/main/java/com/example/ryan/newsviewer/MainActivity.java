@@ -27,6 +27,8 @@ import android.util.Xml;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -50,18 +52,15 @@ public class MainActivity extends AppCompatActivity {
     protected static final int VIEW_INFO_REQUEST_CODE = 0;
     private static final String TAG = "MyActivity";
     private RecyclerView mRecyclerViewer;
-    private RecyclerView mDrawerRecyclerViewer;
-    private TabLayout mSortTabs;
     private SwipeRefreshLayout mSwipeLayout;
     private SwipeRefreshLayout mDrawerSwipeLayout;
     private List<RssFeedModel> mFeedModelList;
     private Sort sortMethod;
-    Toolbar toolbar;
     private DrawerLayout mDrawerLayout;
     private ArrayList<RssFeedDrawerItem> rssFeeds;
     private ArrayList<RssFeedDrawerItem> shownRssFeeds;
     private ActionBarDrawerToggle mDrawerToggle;
-    private FetchFeedTask mainFeed;
+    private Comparator<RssFeedDrawerItem> drawerComparator;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -85,15 +84,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void loadRssFeeds(){
         // get or create list of rss feeds
         SharedPreferences appSharedPrefs = PreferenceManager
                 .getDefaultSharedPreferences(this.getApplicationContext());
         Gson gson = new Gson();
 
+        /*
         // ----------------- debugging ----------------
         appSharedPrefs.edit().remove("FeedList").apply();
         // --------------------------------------------
+        */
 
         String json = appSharedPrefs.getString("FeedList", null);
         shownRssFeeds = new ArrayList<RssFeedDrawerItem>();
@@ -108,9 +110,11 @@ public class MainActivity extends AppCompatActivity {
             try {
                 rssFeeds.add(new RssFeedDrawerItem("The Guardian", "https://www.theguardian.com/us-news/rss", true));
                 rssFeeds.add(new RssFeedDrawerItem("BBC World News", "http://feeds.bbci.co.uk/news/world/rss.xml", true));
-                rssFeeds.add(new RssFeedDrawerItem("Fox News Politics", "feeds.foxnews.com/foxnews/politics?format=xml", true));
-                rssFeeds.add(new RssFeedDrawerItem("Washington Post Politics that has waay too long of a title",
-                        "http://feeds.washingtonpost.com/rss/rss_election-2012", false));
+                rssFeeds.add(new RssFeedDrawerItem("Fox News: US", "http://feeds.foxnews.com/foxnews/national", true));
+                rssFeeds.add(new RssFeedDrawerItem("Washington Post: Fact Checker",
+                        "http://feeds.washingtonpost.com/rss/rss_fact-checker", true));
+                rssFeeds.add(new RssFeedDrawerItem("Reuter's: US News", "http://feeds.reuters.com/Reuters/domesticNews", true));
+                rssFeeds.add(new RssFeedDrawerItem("NY Times: US", "http://rss.nytimes.com/services/xml/rss/nyt/US.xml", true));
                 for(RssFeedDrawerItem feed : rssFeeds){
                     if(feed.isAdded()) shownRssFeeds.add(feed);
                 }
@@ -118,6 +122,20 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("MainActivity", "Cannot add invalid RSS feed");
             }
 
+            drawerComparator = new Comparator<RssFeedDrawerItem>() {
+                @Override
+                public int compare(RssFeedDrawerItem t1, RssFeedDrawerItem t2) {
+                    if(t1.isAdded() && !t2.isAdded()) return -1;
+                    if(!t1.isAdded() && t2.isAdded()) return 1;
+                    String t1Org = t1.title.toLowerCase();
+                    String t2Org = t2.title.toLowerCase();
+                    if(t1Org.startsWith("the ")) t1Org = t1Org.substring(4);
+                    if(t2Org.startsWith("the ")) t2Org = t2Org.substring(4);
+                    return t1Org.compareTo(t2Org);
+                }
+            };
+
+            rssFeeds.sort(drawerComparator);
             saveRssFeeds();
         }
     }
@@ -133,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void updateRssFeeds(List<RssFeedDrawerItem> newRssFeeds){
         rssFeeds = new ArrayList<>(newRssFeeds);
         shownRssFeeds = new ArrayList<>();
@@ -141,19 +160,27 @@ public class MainActivity extends AppCompatActivity {
                 shownRssFeeds.add(feed);
             }
         }
+
+        rssFeeds.sort(drawerComparator);
+
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void updateRssFeeds(List<RssFeedDrawerItem> newRssFeeds, List<RssFeedDrawerItem> newShownRssFeeds){
         rssFeeds = new ArrayList<>(newRssFeeds);
         shownRssFeeds = new ArrayList<>(newShownRssFeeds);
+
+        rssFeeds.sort(drawerComparator);
         // TODO outsource saveRssFeeds to when the app stops
         saveRssFeeds();
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     private void initializeContent() {
-        mainFeed = new FetchFeedTask();
+        FetchFeedTask mainFeed = new FetchFeedTask();
         mRecyclerViewer = findViewById(R.id.recyclerView);
         mRecyclerViewer.setLayoutManager(new LinearLayoutManager(this));
+
         sortMethod = Sort.RECENT_DATE;
         mSwipeLayout = findViewById(R.id.swipeRefreshLayout);
 
@@ -165,18 +192,19 @@ public class MainActivity extends AppCompatActivity {
                 new FetchFeedTask().execute((Void) null);
             }
         });
-
     }
 
     private void setupActionBar(){
-        toolbar = findViewById(R.id.tool_bar);
+        Toolbar toolbar = findViewById(R.id.tool_bar);
         toolbar.setNavigationIcon(R.drawable.baseline_menu_24);
         setSupportActionBar(toolbar);
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayShowTitleEnabled(false);
         actionBar.setDisplayHomeAsUpEnabled(true);
+    }
 
-        mSortTabs = findViewById(R.id.sort_tabs);
+    private void setupTabSort(){
+        TabLayout mSortTabs = findViewById(R.id.sort_tabs);
         mSortTabs.addTab(mSortTabs.newTab().setText("Recent"));
         mSortTabs.addTab(mSortTabs.newTab().setText("Alphabetical"));
         mSortTabs.addTab(mSortTabs.newTab().setText("Shuffle"));
@@ -193,15 +221,11 @@ public class MainActivity extends AppCompatActivity {
                 }
                 new FetchFeedTask().execute((Void) null);
             }
-
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {
-
             }
-
             @Override
             public void onTabReselected(TabLayout.Tab tab) {
-
             }
         });
     }
@@ -209,11 +233,10 @@ public class MainActivity extends AppCompatActivity {
     private void initializeDrawer(){
         mDrawerLayout = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
-        mDrawerRecyclerViewer = findViewById(R.id.list_of_feeds);
+        RecyclerView mDrawerRecyclerViewer = findViewById(R.id.list_of_feeds);
         mDrawerRecyclerViewer.setLayoutManager(new LinearLayoutManager(this));
         final RssDrawerListAdapter drawerAdapter = new RssDrawerListAdapter(rssFeeds, this);
         mDrawerRecyclerViewer.setAdapter(drawerAdapter);
-
         mDrawerLayout.addDrawerListener(new DrawerLayout.DrawerListener() {
             @Override
             public void onDrawerSlide(@NonNull View drawerView, float slideOffset) {
@@ -225,10 +248,13 @@ public class MainActivity extends AppCompatActivity {
 
             }
 
+            @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
             public void onDrawerClosed(@NonNull View drawerView) {
                 if(drawerAdapter.drawerChanged()){
                     updateRssFeeds(drawerAdapter.getRssFeeds(), drawerAdapter.getShownRssFeeds());
+                    drawerAdapter.getRssFeeds().sort(drawerComparator);
+                    drawerAdapter.notifyDataSetChanged();
                     new FetchFeedTask().execute((Void) null);
                 }
             }
@@ -240,6 +266,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -248,6 +275,7 @@ public class MainActivity extends AppCompatActivity {
         loadRssFeeds();
         initializeDrawer();
         initializeContent();
+        setupTabSort();
     }
 
     private class FetchFeedTask extends AsyncTask<Void, Void, Boolean> {
@@ -296,8 +324,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @RequiresApi(api = Build.VERSION_CODES.N)
-        private void sortList(List<RssFeedModel> mFeedModelList, Sort recentDate) {
-            switch(recentDate){
+        private void sortList(List<RssFeedModel> mFeedModelList, Sort method) {
+            switch(method){
                 case RECENT_DATE:
                     mFeedModelList.sort(new Comparator<RssFeedModel>() {
                         @Override
@@ -312,8 +340,8 @@ public class MainActivity extends AppCompatActivity {
                         public int compare(RssFeedModel t1, RssFeedModel t2) {
                             String t1Org = t1.getDomain().toLowerCase();
                             String t2Org = t2.getDomain().toLowerCase();
-                            if(t1Org.startsWith("the")) t1Org = t1Org.substring(3);
-                            if(t2Org.startsWith("the")) t2Org = t2Org.substring(3);
+                            if(t1Org.startsWith("the ")) t1Org = t1Org.substring(4);
+                            if(t2Org.startsWith("the ")) t2Org = t2Org.substring(4);
                             return t1Org.compareTo(t2Org);
                         }
                     });
