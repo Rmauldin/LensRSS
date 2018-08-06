@@ -6,6 +6,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.jsoup.Jsoup;
 
 import java.io.ByteArrayOutputStream;
@@ -25,6 +26,8 @@ public class RssFeedModel implements Parcelable{
     private String domain;
     private String displayDate;
     private String author;
+    private double polarity;
+    private double subjectivity;
     private Date date;
     private String thumbnail_url;
     //private Bitmap image;
@@ -299,6 +302,26 @@ public class RssFeedModel implements Parcelable{
 
     public String getThumbnailUrl() {
         return thumbnail_url;
+    }
+
+    public void setPolarity(double polarity) {
+        this.polarity = polarity;
+    }
+
+    public double getPolarity(){
+        return polarity;
+    }
+
+    public void setSubjectivity(double subjectivity){
+        this.subjectivity = subjectivity;
+    }
+
+    public double getSubjectivity(){
+        return this.subjectivity;
+    }
+
+    public void setImage(String image) {
+
     }
 
     private class getMonthException extends Throwable {

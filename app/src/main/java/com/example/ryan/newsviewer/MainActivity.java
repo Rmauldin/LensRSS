@@ -97,6 +97,19 @@ public class MainActivity extends AppCompatActivity {
         // --------------------------------------------
         */
 
+        drawerComparator = new Comparator<RssFeedDrawerItem>() {
+            @Override
+            public int compare(RssFeedDrawerItem t1, RssFeedDrawerItem t2) {
+                if(t1.isAdded() && !t2.isAdded()) return -1;
+                if(!t1.isAdded() && t2.isAdded()) return 1;
+                String t1Org = t1.title.toLowerCase();
+                String t2Org = t2.title.toLowerCase();
+                if(t1Org.startsWith("the ")) t1Org = t1Org.substring(4);
+                if(t2Org.startsWith("the ")) t2Org = t2Org.substring(4);
+                return t1Org.compareTo(t2Org);
+            }
+        };
+
         String json = appSharedPrefs.getString("FeedList", null);
         shownRssFeeds = new ArrayList<RssFeedDrawerItem>();
         if(json != null){
@@ -121,19 +134,6 @@ public class MainActivity extends AppCompatActivity {
             }catch (URISyntaxException e) {
                 Log.d("MainActivity", "Cannot add invalid RSS feed");
             }
-
-            drawerComparator = new Comparator<RssFeedDrawerItem>() {
-                @Override
-                public int compare(RssFeedDrawerItem t1, RssFeedDrawerItem t2) {
-                    if(t1.isAdded() && !t2.isAdded()) return -1;
-                    if(!t1.isAdded() && t2.isAdded()) return 1;
-                    String t1Org = t1.title.toLowerCase();
-                    String t2Org = t2.title.toLowerCase();
-                    if(t1Org.startsWith("the ")) t1Org = t1Org.substring(4);
-                    if(t2Org.startsWith("the ")) t2Org = t2Org.substring(4);
-                    return t1Org.compareTo(t2Org);
-                }
-            };
 
             rssFeeds.sort(drawerComparator);
             saveRssFeeds();

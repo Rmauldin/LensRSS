@@ -1,9 +1,12 @@
 package com.example.ryan.newsviewer;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -22,23 +25,42 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.google.gson.JsonObject;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 import me.angrybyte.goose.Article;
 import me.angrybyte.goose.Configuration;
 import me.angrybyte.goose.ContentExtractor;
 import me.angrybyte.goose.network.GooseDownloader;
+import okhttp3.FormBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class ViewInfo extends AppCompatActivity{
-
+    final String SERVER_URL = "http://174.77.52.240:5000/request-url-info";
     RssFeedModel item;
     int index;
     Bitmap bitmap;
     SwipeRefreshLayout mSwipeLayout;
-    TextView articleTitle, articleAuthor, articleDate, articleContent;
+    TextView articleTitle, articleAuthor, articleDate, articleContent, articlePolarity, articleSubjectivity;
     ImageView articleImage;
     Toolbar toolbar;
 
@@ -79,7 +101,10 @@ public class ViewInfo extends AppCompatActivity{
         articleDate = findViewById(R.id.article_date);
         articleContent = findViewById(R.id.article_content);
         articleImage = findViewById(R.id.article_image);
+        articlePolarity = findViewById(R.id.article_polarity);
+        articleSubjectivity = findViewById(R.id.article_subjectivity);
         FetchArticleTask mainTask = new FetchArticleTask();
+
         if(item.getLoaded().equalsIgnoreCase("false")) {
             mainTask.execute((Void) null);
         }else{
@@ -100,7 +125,7 @@ public class ViewInfo extends AppCompatActivity{
         if(item.getAuthor() != null) {
             articleAuthor.setText(item.getAuthor());
         }else{
-            articleAuthor.setText("John Smith");
+            articleAuthor.setText("");
         }
         articleDate.setText(item.getDisplayDate());
         if(item.getImage() != null) {
@@ -133,6 +158,86 @@ public class ViewInfo extends AppCompatActivity{
         setResult(RESULT_OK, intent);
     }
 
+    private boolean isConnected(){
+        ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Activity.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        if (networkInfo != null && networkInfo.isConnected())
+            return true;
+        else
+            return false;
+    }
+
+    private class FetchArticleTask extends AsyncTask<Void, Void, Boolean>{
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            mSwipeLayout.setRefreshing(true);
+        }
+
+        private void processJson(String responseData){
+            try{
+                JSONObject reader = new JSONObject(responseData);
+                item.setContent(reader.getString("text"));
+                item.setPolarity(reader.getDouble("polarity"));
+                item.setSubjectivity(reader.getDouble("subjectivity"));
+                String author = reader.getJSONArray("authors").getString(0);
+                item.setAuthor(author);
+                String imageUrl = reader.getString("image");
+                if(!imageUrl.equalsIgnoreCase("")) {
+                    item.setImage(GooseDownloader.getPhoto(imageUrl, true));
+                }
+            }catch(JSONException e){
+                Log.d("processJson", e.getLocalizedMessage());
+            }
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            RequestBody formBody = new FormBody.Builder().add("url", item.getLink()).build();
+            Request request = new Request.Builder()
+                    .url(SERVER_URL)
+                    .post(formBody)
+                    .build();
+            Log.d("FetchArticleTask", "request is: " + request.toString());
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .retryOnConnectionFailure(true)
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .build();
+            try {
+                Response response = client.newCall(request).execute();
+                if(response.code() == 200){
+                    String responseData = response.body().string();
+                    processJson(responseData);
+                    Log.d("FetchArticleTask", "Received: " + responseData);
+                    response.close();
+                }else{
+                    Log.d("FetchArticleTask", "Server issue");
+                    response.close();
+                    return false;
+                    //Server problem
+                }
+            }catch(IOException e){
+                Log.d("FetchArticleTask", e.getLocalizedMessage());
+                return false;
+            }
+            return true;
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        @Override
+        protected void onPostExecute(Boolean aBoolean) {
+            super.onPostExecute(aBoolean);
+            mSwipeLayout.setRefreshing(false);
+            if(aBoolean){
+                displayInfo();
+                Log.d("ViewInfo", "FetchArticleTask Success");
+            }else{
+                Log.d("ViewInfo", "FetchArticleTask Error");
+            }
+        }
+    }
+    /*
     private class FetchArticleTask extends AsyncTask<Void, Void, Boolean>{
 
         Configuration config;
@@ -182,7 +287,6 @@ public class ViewInfo extends AppCompatActivity{
                 item.setDate(showDate);
             }
             extractor.releaseResources();
-            // ToDo find a way to get author
             return true;
         }
 
@@ -199,5 +303,6 @@ public class ViewInfo extends AppCompatActivity{
             }
         }
     }
+    */
 
 }
