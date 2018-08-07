@@ -27,6 +27,7 @@ import android.widget.TextView;
 
 import com.google.gson.JsonObject;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -42,6 +43,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.util.Date;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import me.angrybyte.goose.Article;
@@ -55,12 +57,11 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class ViewInfo extends AppCompatActivity{
-    final String SERVER_URL = "http://174.77.52.240:5000/request-url-info";
     RssFeedModel item;
     int index;
     Bitmap bitmap;
     SwipeRefreshLayout mSwipeLayout;
-    TextView articleTitle, articleAuthor, articleDate, articleContent, articlePolarity, articleSubjectivity;
+    TextView articleTitle, articleAuthor, articleDate, articleContent, articlePolarity, articleSubjectivity, articleLeaning;
     ImageView articleImage;
     Toolbar toolbar;
 
@@ -103,6 +104,7 @@ public class ViewInfo extends AppCompatActivity{
         articleImage = findViewById(R.id.article_image);
         articlePolarity = findViewById(R.id.article_polarity);
         articleSubjectivity = findViewById(R.id.article_subjectivity);
+        articleLeaning = findViewById(R.id.article_leaning);
         FetchArticleTask mainTask = new FetchArticleTask();
 
         if(item.getLoaded().equalsIgnoreCase("false")) {
@@ -133,6 +135,19 @@ public class ViewInfo extends AppCompatActivity{
         }
         articleContent.setText(item.getContent());
         findViewById(R.id.article_info).setVisibility(View.VISIBLE);
+        if(item.getLeaning() != null) {
+            String polarityText = "Positivity: " + String.format(Locale.US, "%.02f%%", item.getPolarity() * 100);
+            String subjectivityText = "Subjectivity: " + String.format(Locale.US, "%.02f%%", item.getSubjectivity() * 100);
+            articlePolarity.setText(polarityText);
+            articleSubjectivity.setText(subjectivityText);
+
+            String leaningText = "Best Guess for Political Bias: " + item.getLeaning();
+            articleLeaning.setText(leaningText);
+        }else{
+            articlePolarity.setVisibility(View.GONE);
+            articleSubjectivity.setVisibility(View.GONE);
+            articleLeaning.setText(R.string.analyze_failure);
+        }
 
         item.setLoaded("true");
         Intent intent = new Intent(this, MainActivity.class);
@@ -174,54 +189,56 @@ public class ViewInfo extends AppCompatActivity{
             mSwipeLayout.setRefreshing(true);
         }
 
-        private void processJson(String responseData){
-            try{
-                JSONObject reader = new JSONObject(responseData);
-                item.setContent(reader.getString("text"));
-                item.setPolarity(reader.getDouble("polarity"));
-                item.setSubjectivity(reader.getDouble("subjectivity"));
-                String author = reader.getJSONArray("authors").getString(0);
-                item.setAuthor(author);
-                String imageUrl = reader.getString("image");
-                if(!imageUrl.equalsIgnoreCase("")) {
-                    item.setImage(GooseDownloader.getPhoto(imageUrl, true));
-                }
-            }catch(JSONException e){
-                Log.d("processJson", e.getLocalizedMessage());
-            }
-        }
-
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            RequestBody formBody = new FormBody.Builder().add("url", item.getLink()).build();
-            Request request = new Request.Builder()
-                    .url(SERVER_URL)
-                    .post(formBody)
-                    .build();
-            Log.d("FetchArticleTask", "request is: " + request.toString());
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .retryOnConnectionFailure(true)
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .build();
-            try {
-                Response response = client.newCall(request).execute();
-                if(response.code() == 200){
-                    String responseData = response.body().string();
-                    processJson(responseData);
-                    Log.d("FetchArticleTask", "Received: " + responseData);
-                    response.close();
-                }else{
-                    Log.d("FetchArticleTask", "Server issue");
-                    response.close();
-                    return false;
-                    //Server problem
-                }
-            }catch(IOException e){
-                Log.d("FetchArticleTask", e.getLocalizedMessage());
+        private boolean bypassServer(){
+            Configuration config = new Configuration(getCacheDir().getAbsolutePath());
+            ContentExtractor extractor = new ContentExtractor(config);
+            if(item.getLink() == null) {
+                item.setContent(getResources().getString(R.string.no_article_text));
                 return false;
             }
+            Article article = extractor.extractContent(item.getLink(), true);
+            if(article == null){
+                item.setContent(getResources().getString(R.string.no_article_text));
+                return false;
+            }
+            String content = article.getCleanedArticleText();
+            if(content == null || content.length() < 250) {
+                content = getResources().getString(R.string.no_article_text);
+                content = content + "\n\n" + article.getMetaDescription();
+                articleContent.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        Uri uri = Uri.parse(item.getLink());
+                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                        startActivity(intent);
+                    }
+                });
+                Log.d("ViewInfo", "Could not fetch content");
+            }
+            item.setContent(content);
+            if(article.getTopImage() != null) {
+                item.setImage(GooseDownloader.getPhoto(article.getTopImage().getImageSrc(), true));
+            }else{
+                Log.d("ViewInfo", "Could not extract photo");
+            }
+            Date showDate = article.getPublishDate();
+            if(showDate != null){
+                item.setDate(showDate);
+            }
+            extractor.releaseResources();
             return true;
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            FetchArticle fetchArticle = new FetchArticle(item);
+            if(fetchArticle.execute()){
+                item = fetchArticle.getNewItem();
+                return true;
+            }else{
+                return bypassServer();
+            }
         }
 
         @RequiresApi(api = Build.VERSION_CODES.N)

@@ -28,10 +28,12 @@ public class RssFeedModel implements Parcelable{
     private String author;
     private double polarity;
     private double subjectivity;
+    private String leaning;
     private Date date;
     private String thumbnail_url;
     //private Bitmap image;
     private byte[] image;
+    // loaded is a String in order to be parceable
     private String loaded;
 
 
@@ -62,6 +64,9 @@ public class RssFeedModel implements Parcelable{
         this.author = in.readString();
         this.thumbnail_url = in.readString();
         this.loaded = in.readString();
+        this.polarity = Double.parseDouble(in.readString());
+        this.subjectivity = Double.parseDouble(in.readString());
+        this.leaning = in.readString();
     }
 
     public RssFeedModel(RssFeedModel returnItem) {
@@ -76,6 +81,9 @@ public class RssFeedModel implements Parcelable{
         this.thumbnail_url = returnItem.thumbnail_url;
         this.loaded = returnItem.loaded;
         this.image = returnItem.image;
+        this.polarity = returnItem.polarity;
+        this.subjectivity = returnItem.subjectivity;
+        this.leaning = returnItem.leaning;
     }
 
     public void setThumbnail(String img_url){
@@ -271,6 +279,9 @@ public class RssFeedModel implements Parcelable{
         dest.writeString(author);
         dest.writeString(thumbnail_url);
         dest.writeString(loaded);
+        dest.writeString(String.valueOf(polarity));
+        dest.writeString(String.valueOf(subjectivity));
+        dest.writeString(leaning);
     }
 
     public static final Parcelable.Creator<RssFeedModel> CREATOR = new Parcelable.Creator<RssFeedModel>() {
@@ -322,6 +333,17 @@ public class RssFeedModel implements Parcelable{
 
     public void setImage(String image) {
 
+    }
+
+    public void setLeaning(String leaning) {
+        if(leaning.length() > 0)
+            this.leaning = leaning.substring(0, 1).toUpperCase() + leaning.substring(1);
+        else
+            this.leaning = leaning;
+    }
+
+    public String getLeaning(){
+        return this.leaning;
     }
 
     private class getMonthException extends Throwable {

@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<RssFeedDrawerItem> shownRssFeeds;
     private ActionBarDrawerToggle mDrawerToggle;
     private Comparator<RssFeedDrawerItem> drawerComparator;
+    FetchFeedTask mainFeed;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -177,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     private void initializeContent() {
-        FetchFeedTask mainFeed = new FetchFeedTask();
+        mainFeed = new FetchFeedTask();
         mRecyclerViewer = findViewById(R.id.recyclerView);
         mRecyclerViewer.setLayoutManager(new LinearLayoutManager(this));
 
@@ -189,7 +190,9 @@ public class MainActivity extends AppCompatActivity {
         mSwipeLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                new FetchFeedTask().execute((Void) null);
+                mainFeed.cancel(true);
+                mainFeed = new FetchFeedTask();
+                mainFeed.execute((Void) null);
             }
         });
     }
@@ -219,7 +222,9 @@ public class MainActivity extends AppCompatActivity {
                 }else if(tab.getText().equals("Shuffle")){
                     sortMethod = Sort.SHUFFLE;
                 }
-                new FetchFeedTask().execute((Void) null);
+                mainFeed.cancel(true);
+                mainFeed = new FetchFeedTask();
+                mainFeed.execute((Void) null);
             }
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {
@@ -255,7 +260,9 @@ public class MainActivity extends AppCompatActivity {
                     updateRssFeeds(drawerAdapter.getRssFeeds(), drawerAdapter.getShownRssFeeds());
                     drawerAdapter.getRssFeeds().sort(drawerComparator);
                     drawerAdapter.notifyDataSetChanged();
-                    new FetchFeedTask().execute((Void) null);
+                    mainFeed.cancel(true);
+                    mainFeed = new FetchFeedTask();
+                    mainFeed.execute((Void) null);
                 }
             }
 
@@ -459,7 +466,9 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item){
         switch(item.getItemId()){
             case R.id.mRefresh:
-                new FetchFeedTask().execute((Void) null);
+                mainFeed.cancel(true);
+                mainFeed = new FetchFeedTask();
+                mainFeed.execute((Void) null);
                 return true;
                 //break;
             case android.R.id.home:
