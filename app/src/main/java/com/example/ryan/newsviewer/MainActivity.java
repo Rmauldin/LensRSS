@@ -337,7 +337,15 @@ public class MainActivity extends AppCompatActivity {
                     mFeedModelList.sort(new Comparator<RssFeedModel>() {
                         @Override
                         public int compare(RssFeedModel t1, RssFeedModel t2) {
-                            return t2.getDisplayDate().compareTo(t1.getDisplayDate());
+                            if(t2.getDisplayDate().compareTo(t1.getDisplayDate()) == 0) {
+                                String t1Org = t1.getDomain().toLowerCase();
+                                String t2Org = t2.getDomain().toLowerCase();
+                                if(t1Org.startsWith("the ")) t1Org = t1Org.substring(4);
+                                if(t2Org.startsWith("the ")) t2Org = t2Org.substring(4);
+                                return t1Org.compareTo(t2Org);
+                            }else{
+                                return t2.getDisplayDate().compareTo(t1.getDisplayDate());
+                            }
                         }
                     });
                     break;

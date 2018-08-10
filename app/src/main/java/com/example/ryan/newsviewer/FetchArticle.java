@@ -17,7 +17,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class FetchArticle {
-    final String SERVER_URL = "http://174.77.52.240:5000/request-url-info";
+    final String SERVER_URL = "http://newsviewer-env.yhrfxqcrf4.us-west-1.elasticbeanstalk.com/request-url-info";
     RssFeedModel item;
 
     public FetchArticle(RssFeedModel item){
