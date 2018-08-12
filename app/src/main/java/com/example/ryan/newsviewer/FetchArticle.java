@@ -1,6 +1,7 @@
 package com.example.ryan.newsviewer;
 
 
+import android.content.Context;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -17,10 +18,12 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class FetchArticle {
-    final String SERVER_URL = "http://newsviewer-env.yhrfxqcrf4.us-west-1.elasticbeanstalk.com/request-url-info";
+    //final String SERVER_URL = "http://newsviewer-env.yhrfxqcrf4.us-west-1.elasticbeanstalk.com/request-url-info";
+    String server_url;
     RssFeedModel item;
 
-    public FetchArticle(RssFeedModel item){
+    public FetchArticle(RssFeedModel item, Context context){
+        server_url = context.getResources().getString(R.string.server_url);
         this.item = item;
     }
 
@@ -46,7 +49,7 @@ public class FetchArticle {
     public boolean execute(){
         RequestBody formBody = new FormBody.Builder().add("url", item.getLink()).build();
         Request request = new Request.Builder()
-                .url(SERVER_URL)
+                .url(server_url)
                 .post(formBody)
                 .build();
         Log.d("FetchArticleTask", "request is: " + request.toString());

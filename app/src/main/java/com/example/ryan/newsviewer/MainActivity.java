@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
@@ -17,7 +18,6 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
@@ -27,8 +27,6 @@ import android.util.Xml;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.animation.AccelerateInterpolator;
-import android.view.animation.DecelerateInterpolator;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -46,7 +44,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class MainActivity extends AppCompatActivity {
     protected static final int VIEW_INFO_REQUEST_CODE = 0;
@@ -129,6 +126,10 @@ public class MainActivity extends AppCompatActivity {
                         "http://feeds.washingtonpost.com/rss/rss_fact-checker", true));
                 rssFeeds.add(new RssFeedDrawerItem("Reuter's: US News", "http://feeds.reuters.com/Reuters/domesticNews", true));
                 rssFeeds.add(new RssFeedDrawerItem("NY Times: US", "http://rss.nytimes.com/services/xml/rss/nyt/US.xml", true));
+                rssFeeds.add(new RssFeedDrawerItem("CNBC: Top News", "https://www.cnbc.com/id/100003114/device/rss/rss.html", true));
+                rssFeeds.add(new RssFeedDrawerItem("ABC News: Top Stories", "https://abcnews.go.com/abcnews/topstories", true));
+                rssFeeds.add(new RssFeedDrawerItem("CNN: Top Stories", "http://rss.cnn.com/rss/cnn_topstories.rss", true));
+                // http://rss.cnn.com/rss/cnn_topstories.rss
                 for(RssFeedDrawerItem feed : rssFeeds){
                     if(feed.isAdded()) shownRssFeeds.add(feed);
                 }
@@ -364,8 +365,9 @@ public class MainActivity extends AppCompatActivity {
                 case SHUFFLE:
                     mFeedModelList.sort(new Comparator<RssFeedModel>() {
                         @Override
-                        public int compare(RssFeedModel rssFeedModel, RssFeedModel t1) {
-                            return ThreadLocalRandom.current().nextInt(-1, 1 + 1);
+                        public int compare(RssFeedModel t1, RssFeedModel t2) {
+                            //return ThreadLocalRandom.current().nextInt(-1, 1 + 1);
+                            return t1.hashCode() - t2.hashCode();
                         }
                     });
                     break;
@@ -454,13 +456,14 @@ public class MainActivity extends AppCompatActivity {
                     img = null;
                     isItem = false;
                 }
-
             }
+            return items;
+        }catch(Exception e) {
+            Log.d("parseFeed", e.getLocalizedMessage());
             return items;
         }finally{
             inputStream.close();
         }
-
     }
 
     @Override

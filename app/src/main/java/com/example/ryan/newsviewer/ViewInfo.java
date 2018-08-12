@@ -11,50 +11,27 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
-import android.text.Html;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.google.gson.JsonObject;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
 import java.util.Date;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 import me.angrybyte.goose.Article;
 import me.angrybyte.goose.Configuration;
 import me.angrybyte.goose.ContentExtractor;
 import me.angrybyte.goose.network.GooseDownloader;
-import okhttp3.FormBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 public class ViewInfo extends AppCompatActivity{
     RssFeedModel item;
@@ -232,7 +209,7 @@ public class ViewInfo extends AppCompatActivity{
         @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected Boolean doInBackground(Void... voids) {
-            FetchArticle fetchArticle = new FetchArticle(item);
+            FetchArticle fetchArticle = new FetchArticle(item, getApplicationContext());
             if(fetchArticle.execute()){
                 item = fetchArticle.getNewItem();
                 return true;

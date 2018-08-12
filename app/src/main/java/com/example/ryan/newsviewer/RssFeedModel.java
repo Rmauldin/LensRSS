@@ -6,7 +6,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
 
-import org.json.JSONArray;
 import org.jsoup.Jsoup;
 
 import java.io.ByteArrayOutputStream;
