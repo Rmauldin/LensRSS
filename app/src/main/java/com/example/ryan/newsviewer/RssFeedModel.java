@@ -2,11 +2,12 @@ package com.example.ryan.newsviewer;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
-import org.json.JSONArray;
 import org.jsoup.Jsoup;
 
 import java.io.ByteArrayOutputStream;
@@ -15,6 +16,7 @@ import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 public class RssFeedModel implements Parcelable{
     private String htmlDetails;
@@ -29,6 +31,7 @@ public class RssFeedModel implements Parcelable{
     private double polarity;
     private double subjectivity;
     private String leaning;
+    private String time;
     private Date date;
     private String thumbnail_url;
     //private Bitmap image;
@@ -37,8 +40,13 @@ public class RssFeedModel implements Parcelable{
     private String loaded;
 
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public RssFeedModel(String title, String link, String details, String date){
-        this.title = title;
+        if(title.charAt(0) == ' '){
+            this.title = title.substring(1);
+        }else {
+            this.title = title;
+        }
         if( !link.startsWith("http://") && !link.startsWith("https://")){
             this.link = "http://" + link;
         }else {
@@ -67,6 +75,7 @@ public class RssFeedModel implements Parcelable{
         this.polarity = Double.parseDouble(in.readString());
         this.subjectivity = Double.parseDouble(in.readString());
         this.leaning = in.readString();
+        this.time = in.readString();
     }
 
     public RssFeedModel(RssFeedModel returnItem) {
@@ -84,6 +93,7 @@ public class RssFeedModel implements Parcelable{
         this.polarity = returnItem.polarity;
         this.subjectivity = returnItem.subjectivity;
         this.leaning = returnItem.leaning;
+        this.time = returnItem.time;
     }
 
     public void setThumbnail(String img_url){
@@ -142,6 +152,7 @@ public class RssFeedModel implements Parcelable{
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private String customParseDate(String date) throws customParseDateException {
         StringBuilder builder = new StringBuilder();
         String month, day, year;
@@ -149,6 +160,7 @@ public class RssFeedModel implements Parcelable{
             month = getCustomMonth(date);
             day = getCustomDay(date);
             year = getCustomYear(date);
+            time = getCustomTime(date);
         }catch(getMonthException e){
             Log.d("customParseDate", "Could not parse for month");
             throw new customParseDateException();
@@ -157,6 +169,9 @@ public class RssFeedModel implements Parcelable{
             throw new customParseDateException();
         }catch(getYearException e){
             Log.d("customParseDate", "Could not parse for year");
+            throw new customParseDateException();
+        } catch (getTimeException e) {
+            Log.d("customParseTime", "Could not parse for time");
             throw new customParseDateException();
         }
         return month + "/" + day + "/" + year;
@@ -212,8 +227,13 @@ public class RssFeedModel implements Parcelable{
         throw new getMonthException();
     }
 
+    public String getTime(){
+        return time;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void getDate(String date){
-        SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yyyy");
+        SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yyyy", Locale.US);
         try {
             formatter.parse(date);
             this.displayDate = formatter.format(new Date());
@@ -226,6 +246,17 @@ public class RssFeedModel implements Parcelable{
                 this.displayDate = date;
             }
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private String getCustomTime(String date) throws getTimeException{
+        for(String s : date.split(" ")){
+            if(s.contains(":")){
+                if(s.length() < 7) return s + ":00";
+                return s;
+            }
+        }
+        throw new getTimeException();
     }
 
     public void setContent(String content){
@@ -282,6 +313,7 @@ public class RssFeedModel implements Parcelable{
         dest.writeString(String.valueOf(polarity));
         dest.writeString(String.valueOf(subjectivity));
         dest.writeString(leaning);
+        dest.writeString(time);
     }
 
     public static final Parcelable.Creator<RssFeedModel> CREATOR = new Parcelable.Creator<RssFeedModel>() {
@@ -356,5 +388,8 @@ public class RssFeedModel implements Parcelable{
     }
 
     private class customParseDateException extends Throwable {
+    }
+
+    private class getTimeException extends Throwable{
     }
 }

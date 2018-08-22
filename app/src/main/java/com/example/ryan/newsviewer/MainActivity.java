@@ -1,11 +1,15 @@
 package com.example.ryan.newsviewer;
 
+import android.annotation.TargetApi;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.icu.text.RelativeDateTimeFormatter;
+import android.icu.text.SimpleDateFormat;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
@@ -17,7 +21,6 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
@@ -27,8 +30,6 @@ import android.util.Xml;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.animation.AccelerateInterpolator;
-import android.view.animation.DecelerateInterpolator;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -43,10 +44,15 @@ import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.text.ParseException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class MainActivity extends AppCompatActivity {
     protected static final int VIEW_INFO_REQUEST_CODE = 0;
@@ -124,6 +130,10 @@ public class MainActivity extends AppCompatActivity {
             try {
                 rssFeeds.add(new RssFeedDrawerItem("The Guardian", "https://www.theguardian.com/us-news/rss", true));
                 rssFeeds.add(new RssFeedDrawerItem("BBC World News", "http://feeds.bbci.co.uk/news/world/rss.xml", true));
+                rssFeeds.add(new RssFeedDrawerItem("CNN Top Stories", "http://rss.cnn.com/rss/cnn_topstories.rss", true));
+                rssFeeds.add(new RssFeedDrawerItem("ABC News: Top Stories", "https://abcnews.go.com/abcnews/topstories", true));
+                rssFeeds.add(new RssFeedDrawerItem("CNBC: Top News", "https://www.cnbc.com/id/100003114/device/rss/rss.html", true));
+                // https://www.cnbc.com/id/100003114/device/rss/rss.html
                 rssFeeds.add(new RssFeedDrawerItem("Fox News: US", "http://feeds.foxnews.com/foxnews/national", true));
                 rssFeeds.add(new RssFeedDrawerItem("Washington Post: Fact Checker",
                         "http://feeds.washingtonpost.com/rss/rss_fact-checker", true));
@@ -135,8 +145,8 @@ public class MainActivity extends AppCompatActivity {
             }catch (URISyntaxException e) {
                 Log.d("MainActivity", "Cannot add invalid RSS feed");
             }
-
-            rssFeeds.sort(drawerComparator);
+            //rssFeeds.sort(drawerComparator);
+            Collections.sort(rssFeeds, drawerComparator);
             saveRssFeeds();
         }
     }
@@ -171,7 +181,8 @@ public class MainActivity extends AppCompatActivity {
         rssFeeds = new ArrayList<>(newRssFeeds);
         shownRssFeeds = new ArrayList<>(newShownRssFeeds);
 
-        rssFeeds.sort(drawerComparator);
+        //rssFeeds.sort(drawerComparator);
+        Collections.sort(rssFeeds, drawerComparator);
         // TODO outsource saveRssFeeds to when the app stops
         saveRssFeeds();
     }
@@ -258,7 +269,8 @@ public class MainActivity extends AppCompatActivity {
             public void onDrawerClosed(@NonNull View drawerView) {
                 if(drawerAdapter.drawerChanged()){
                     updateRssFeeds(drawerAdapter.getRssFeeds(), drawerAdapter.getShownRssFeeds());
-                    drawerAdapter.getRssFeeds().sort(drawerComparator);
+                    //drawerAdapter.getRssFeeds().sort(drawerComparator);
+                    Collections.sort(drawerAdapter.getRssFeeds(), drawerComparator);
                     drawerAdapter.notifyDataSetChanged();
                     mainFeed.cancel(true);
                     mainFeed = new FetchFeedTask();
@@ -297,6 +309,7 @@ public class MainActivity extends AppCompatActivity {
             findViewById(R.id.list_end).setVisibility(View.GONE);
         }
 
+        @TargetApi(Build.VERSION_CODES.O)
         @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected Boolean doInBackground(Void... voids) {
@@ -330,18 +343,52 @@ public class MainActivity extends AppCompatActivity {
             return successful;
         }
 
+        @TargetApi(Build.VERSION_CODES.O)
         @RequiresApi(api = Build.VERSION_CODES.N)
         private void sortList(List<RssFeedModel> mFeedModelList, Sort method) {
             switch(method){
                 case RECENT_DATE:
+                    Collections.sort(mFeedModelList, new Comparator<RssFeedModel>() {
+                        SimpleDateFormat dtf = new SimpleDateFormat("HH:mm:ss");
+                        @Override
+                        public int compare(RssFeedModel t1, RssFeedModel t2) {
+                            if(t1.getDisplayDate().equalsIgnoreCase(t2.getDisplayDate())) {
+                                //return dtf.parse(t1.getTime()) - dtf.parse(t2.getTime());
+                                try {
+                                    Date d1 = dtf.parse(t1.getTime());
+                                    Date d2 = dtf.parse(t2.getTime());
+                                    if(d1.equals(d2)) return 0;
+                                    if(d1.after(d2)) return -1;
+                                    return 1;
+                                } catch (ParseException e) {
+                                    e.printStackTrace();
+                                    return t2.getDisplayDate().compareTo(t1.getDisplayDate());
+                                }
+                            }
+                            return t2.getDisplayDate().compareTo(t1.getDisplayDate());
+                        }
+                    });
+                    /*
                     mFeedModelList.sort(new Comparator<RssFeedModel>() {
                         @Override
                         public int compare(RssFeedModel t1, RssFeedModel t2) {
                             return t2.getDisplayDate().compareTo(t1.getDisplayDate());
                         }
                     });
+                    */
                     break;
                 case ORG_ALPHABETICAL:
+                    Collections.sort(mFeedModelList, new Comparator<RssFeedModel>() {
+                                @Override
+                                public int compare(RssFeedModel t1, RssFeedModel t2) {
+                                    String t1Org = t1.getDomain().toLowerCase();
+                                    String t2Org = t2.getDomain().toLowerCase();
+                                    if(t1Org.startsWith("the ")) t1Org = t1Org.substring(4);
+                                    if(t2Org.startsWith("the ")) t2Org = t2Org.substring(4);
+                                    return t1Org.compareTo(t2Org);
+                                }
+                            });
+                    /*
                     mFeedModelList.sort(new Comparator<RssFeedModel>() {
                         @Override
                         public int compare(RssFeedModel t1, RssFeedModel t2) {
@@ -352,14 +399,24 @@ public class MainActivity extends AppCompatActivity {
                             return t1Org.compareTo(t2Org);
                         }
                     });
+                    */
                     break;
                 case SHUFFLE:
+                    Collections.sort(mFeedModelList, new Comparator<RssFeedModel>() {
+                        @Override
+                        public int compare(RssFeedModel t1, RssFeedModel t2) {
+                            return t1.hashCode() - t2.hashCode();
+                        }
+                    });
+                    /*
                     mFeedModelList.sort(new Comparator<RssFeedModel>() {
                         @Override
                         public int compare(RssFeedModel rssFeedModel, RssFeedModel t1) {
+                            // comparator needs to have a guarantee of reproducibility
                             return ThreadLocalRandom.current().nextInt(-1, 1 + 1);
                         }
                     });
+                    */
                     break;
             }
         }
@@ -376,6 +433,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public List<RssFeedModel> parseFeed(InputStream inputStream) throws XmlPullParserException, IOException{
         String title = null;
         String link = null;

@@ -19,6 +19,6 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="no_article_text">Could not fetch full article.</string>
-    <string name="server_url">http://174.77.52.240:5000/request-url-info</string>
+    <string name="server_url">http://newsviewer-env.yhrfxqcrf4.us-west-1.elasticbeanstalk.com/request-url-info</string>
     <string name="analyze_failure">Unable to analyze article.</string>
 </resources>
